@@ -1,21 +1,21 @@
 export type EventType = 'ENTRY' | 'EXIT';
 
 export interface Event {
-  id: string;
-  userId: string;
+  id?: string; // Optional for new events
+  userId?: string; // Optional for local events
   type: EventType;
-  occurredAt: string; // ISO UTC
-  occurredTz: string; // IANA
-  createdAt: string;
-  updatedAt: string;
-  source: 'quick' | 'custom' | 'import';
-  notes?: string;
-  syncStatus?: 'queued' | 'synced' | 'error'; // local only
+  occurredAt: string; // ISO 8601 string (UTC)
+  occurredTz: string; // IANA timezone (e.g., 'Asia/Kolkata')
+  notes?: string; // Optional notes
+  createdAt: string; // ISO 8601 string (UTC)
+  updatedAt: string; // ISO 8601 string (UTC)
+  source: 'quick' | 'custom' | 'import'; // Source of the event
+  syncStatus?: 'queued' | 'synced' | 'error'; // Optional sync status for offline support
 }
 
+// QueueItem for offline queue
 export interface QueueItem {
-  id: string;
   action: 'create' | 'update' | 'delete';
-  payload: Event | string; // for delete, id
-  enqueuedAt: string;
+  payload: Event;
+  timestamp: string; // ISO 8601 string
 }
