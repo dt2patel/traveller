@@ -1,7 +1,11 @@
+
+/* In a real project with a build step, you would have this:
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+*/
 
+/* For CDN usage, we can add some global styles here if needed */
 body {
   @apply bg-gray-50 text-gray-800;
   -webkit-tap-highlight-color: transparent;

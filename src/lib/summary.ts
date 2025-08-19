@@ -1,8 +1,7 @@
-
 import { TravelEvent, Trip, SummaryData } from '@/types';
-import { parseISO, addDays, getYear, isBefore, isAfter, startOfYear, endOfYear, differenceInMilliseconds, subDays } from 'date-fns';
+import { parseISO, addDays, getYear, isBefore, isAfter, startOfYear, endOfYear, differenceInMilliseconds, subDays, getMonth } from 'date-fns';
 import { nowUTC } from './time';
-import { utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 
 /**
  * Pairs ENTRY and EXIT events into trips.
@@ -78,8 +77,8 @@ const calculateDaysInWindow = (trips: Trip[], windowStart: Date, windowEnd: Date
 
 const getFinancialYearBounds = (year: number, tz: string = 'UTC') => {
     // Financial year is April 1 to March 31
-    const start = utcToZonedTime(new Date(year, 3, 1), tz); // April 1st
-    const end = utcToZonedTime(new Date(year + 1, 2, 31, 23, 59, 59, 999), tz); // March 31st
+    const start = toZonedTime(new Date(year, 3, 1), tz); // April 1st
+    const end = toZonedTime(new Date(year + 1, 2, 31, 23, 59, 59, 999), tz); // March 31st
     return { start, end };
 };
   
@@ -138,8 +137,6 @@ export const calculateSummary = (events: TravelEvent[]): Omit<SummaryData, 'data
     trips,
   };
 };
-
-const getMonth = (date: Date) => date.getMonth();
 
 export const runForecast = (
     events: TravelEvent[],
