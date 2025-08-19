@@ -1,0 +1,5 @@
+{
+  "name": "India Travel Log",
+  "description": "A simple, offline-first PWA to log entries and exits from India for tax purposes. It features offline data storage, Firebase sync, custom event creation, history export, and a summary dashboard for stay calculations.",
+  "requestFramePermissions": []
+}
