@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useEvents } from '@/hooks/useEvents';
@@ -14,6 +13,9 @@ const Home: React.FC = () => {
   const vibrate = useVibration();
   const { logEvent } = useAnalytics();
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const isEventRecent = latestEvent && isWithinMinutes(latestEvent.createdAt, new Date().toISOString(), 10);
+  const secondLatestEvent = events.length > 1 ? events[1] : null;
 
   const handleQuickLog = async () => {
     // Dedupe check: if last event is same type and within 2 mins
@@ -42,13 +44,20 @@ const Home: React.FC = () => {
     }
   };
 
-  const lastTwoEvents = events.slice(0, 2);
-
   return (
     <div className="flex flex-col h-full items-center justify-between text-center pt-8 pb-4">
       <div className="w-full">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome Back!</h1>
-        <p className="text-gray-600">Ready to log your travel?</p>
+        {latestEvent ? (
+          <p className="text-gray-600">
+            Your current status is{' '}
+            <span className={`font-semibold ${latestEvent.type === 'ENTRY' ? 'text-green-600' : 'text-red-600'}`}>
+              {latestEvent.type === 'ENTRY' ? 'In India' : 'Outside India'}
+            </span>
+          </p>
+        ) : (
+          <p className="text-gray-600">Ready to log your travel?</p>
+        )}
       </div>
 
       <div className="my-8 w-full px-4">
@@ -58,24 +67,34 @@ const Home: React.FC = () => {
           size="xl"
           className={`w-full h-24 text-2xl transition-all duration-300 ${nextEventType === 'ENTRY' ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'}`}
         >
-          Log {nextEventType} India
+          {nextEventType === 'ENTRY' ? 'Log Entry Into India' : 'Log Exit From India'}
         </Button>
       </div>
       
       <div className="w-full space-y-4">
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-2">Recent Events</h2>
-          {isLoading && <p>Loading recent events...</p>}
-          {!isLoading && lastTwoEvents.length > 0 ? (
-            <div className="flex justify-center space-x-2">
-              {lastTwoEvents.map(event => (
-                <div key={event.id} className={`px-3 py-1 rounded-full text-xs font-medium ${event.type === 'ENTRY' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  {event.type}: {formatEventDate(event.occurredAt)}
-                </div>
-              ))}
+          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-2">Last Event</h2>
+          {isLoading && <p>Loading...</p>}
+          {!isLoading && latestEvent ? (
+            <div className="bg-gray-100 p-3 rounded-lg w-full max-w-sm mx-auto">
+              <div className="flex items-center justify-center space-x-3">
+                <p className={`font-medium ${latestEvent.type === 'ENTRY' ? 'text-green-800' : 'text-red-800'}`}>
+                  {latestEvent.type}: {formatEventDate(latestEvent.occurredAt)}
+                </p>
+                {isEventRecent && (
+                  <Link to={`/custom-entry/${latestEvent.id}`} className="px-2 py-1 text-xs bg-brand-primary text-white rounded-md hover:bg-indigo-700">
+                    Edit
+                  </Link>
+                )}
+              </div>
+              {secondLatestEvent && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Previous: {secondLatestEvent.type} on {formatEventDate(secondLatestEvent.occurredAt).split(',')[0]}
+                </p>
+              )}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No recent events.</p>
+            <p className="text-sm text-gray-500">No events logged yet.</p>
           )}
         </div>
         
