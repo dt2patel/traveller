@@ -1,11 +1,3 @@
-
-import { 
-  getAuth, 
-  sendSignInLinkToEmail, 
-  isSignInWithEmailLink, 
-  signInWithEmailLink,
-  signOut as firebaseSignOut
-} from 'firebase/auth';
 import { auth } from './firebase';
 
 const EMAIL_STORAGE_KEY = 'emailForSignIn';
@@ -15,13 +7,12 @@ export const sendSignInLink = async (email: string) => {
     url: window.location.origin,
     handleCodeInApp: true,
   };
-  await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+  await auth.sendSignInLinkToEmail(email, actionCodeSettings);
   window.localStorage.setItem(EMAIL_STORAGE_KEY, email);
 };
 
 export const completeSignIn = async (url: string) => {
-  const authInstance = getAuth();
-  if (isSignInWithEmailLink(authInstance, url)) {
+  if (auth.isSignInWithEmailLink(url)) {
     let email = window.localStorage.getItem(EMAIL_STORAGE_KEY);
     if (!email) {
       // User opened the link on a different device. To prevent session fixation
@@ -30,13 +21,23 @@ export const completeSignIn = async (url: string) => {
       email = window.prompt('Please provide your email for confirmation');
       if (!email) throw new Error("Email is required to complete sign-in.");
     }
-    const result = await signInWithEmailLink(authInstance, email, url);
+    const result = await auth.signInWithEmailLink(email, url);
     window.localStorage.removeItem(EMAIL_STORAGE_KEY);
     return result.user;
   }
   throw new Error("Not a valid sign-in link.");
 };
 
+export const registerWithEmailPassword = async (email: string, password: string) => {
+  const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+  return userCredential.user;
+};
+
+export const signInWithEmailPassword = async (email: string, password: string) => {
+    const userCredential = await auth.signInWithEmailAndPassword(email, password);
+    return userCredential.user;
+}
+
 export const signOut = async () => {
-  await firebaseSignOut(auth);
+  await auth.signOut();
 };
