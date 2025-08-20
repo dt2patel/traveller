@@ -1,6 +1,5 @@
 import { TravelEvent, Trip, SummaryData } from '@/types';
-import { parseISO, addDays, getYear, isBefore, isAfter, startOfYear, endOfYear, differenceInMilliseconds, subDays, getMonth } from 'date-fns';
-import { nowUTC } from './time';
+import { parseISO, getYear, isBefore, isAfter, differenceInMilliseconds, subDays, getMonth } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 /**
@@ -10,7 +9,6 @@ export const pairEventsToTrips = (events: TravelEvent[]): Trip[] => {
   const sortedEvents = [...events].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
   const trips: Trip[] = [];
   let currentEntry: TravelEvent | null = null;
-  let lastType: 'ENTRY' | 'EXIT' | null = null;
 
   for (let i = 0; i < sortedEvents.length; i++) {
     const event = sortedEvents[i];
@@ -39,7 +37,6 @@ export const pairEventsToTrips = (events: TravelEvent[]): Trip[] => {
         // We don't add it as a trip, but a more robust system might flag it.
       }
     }
-    lastType = event.type;
   }
 
   // Handle a trip that is still open
