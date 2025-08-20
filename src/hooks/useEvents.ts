@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEvents, addEvent, updateEvent, deleteEvent } from '@/lib/api';
-import { NewTravelEvent, TravelEvent, UpdateTravelEvent } from '@/types';
+import { EventType, NewTravelEvent, TravelEvent, UpdateTravelEvent } from '@/types';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 
@@ -23,7 +23,7 @@ export const useEvents = () => {
 
   const sortedEvents = [...events].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
   const latestEvent = sortedEvents.length > 0 ? sortedEvents[0] : null;
-  const nextEventType = latestEvent?.type === 'ENTRY' ? 'EXIT' : 'ENTRY';
+  const nextEventType: EventType = latestEvent?.type === 'ENTRY' ? 'EXIT' : 'ENTRY';
 
   const addEventMutation = useMutation({
     mutationFn: (newEventData: NewTravelEvent) => {
