@@ -1,5 +1,5 @@
 
-import { collection, doc, setDoc, getDocs, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { db as firestoreDb } from './firebase';
 import {
