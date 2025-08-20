@@ -162,8 +162,8 @@ const processQueueItem = async (item: QueuedItem) => {
 
 const fetchEventsFromFirestore = async (userId: string): Promise<TravelEvent[]> => {
   const querySnapshot = await getEventsCollection(userId).get();
-  return querySnapshot.docs.map((doc: firebase.firestore.QueryDocumentSnapshot<firebase.firestore.DocumentData>) => ({
-    ...(doc.data() as Omit<TravelEvent, 'id'>),
+  return querySnapshot.docs.map((doc: firebase.firestore.QueryDocumentSnapshot) => ({
+    ...(doc.data() as Omit<TravelEvent, 'id' | 'syncStatus'>),
     id: doc.id,
   }));
 };
