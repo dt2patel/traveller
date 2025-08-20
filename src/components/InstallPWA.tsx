@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import Button from './ui/Button';
 
 // This is a simplified approach. A more robust solution might use a library
 // or more complex browser feature detection.
