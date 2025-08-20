@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { SummaryData } from '@/types';
 
 interface SummaryCardsProps {
@@ -7,12 +7,11 @@ interface SummaryCardsProps {
 }
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
-  const [threshold182, setThreshold182] = useState(182);
-  const [threshold365, setThreshold365] = useState(365);
+  const threshold182 = 182;
+  const threshold365 = 365;
 
   const renderDays = (days: number, threshold: number) => {
     const isOver = days >= threshold;
-    const wholeDays = Math.floor(days);
     return (
       <div className="flex items-baseline space-x-2">
         <span className={`text-2xl font-bold ${isOver ? 'text-brand-danger' : 'text-gray-900'}`}>{days.toFixed(2)}</span>
