@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useEvents } from '@/hooks/useEvents';
 import { calculateSummary, hashEvents } from '@/lib/summary';
