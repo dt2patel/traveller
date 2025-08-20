@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { db as firestoreDb } from './firebase';
+import type firebase from 'firebase/compat/app';
 import {
   getLocalEvents,
   putLocalEvent,
@@ -161,8 +162,8 @@ const processQueueItem = async (item: QueuedItem) => {
 
 const fetchEventsFromFirestore = async (userId: string): Promise<TravelEvent[]> => {
   const querySnapshot = await getEventsCollection(userId).get();
-  return querySnapshot.docs.map(doc => ({
-    ...doc.data() as Omit<TravelEvent, 'id'>,
+  return querySnapshot.docs.map((doc: firebase.firestore.QueryDocumentSnapshot) => ({
+    ...(doc.data() as Omit<TravelEvent, 'id' | 'syncStatus'>),
     id: doc.id,
   }));
 };
