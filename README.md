@@ -176,12 +176,11 @@ firebase functions:config:set \
   google.redirect_uri="https://your-domain.com/oauth2callback"
 ```
 
-For local development, populate a `.env` file and keep it out of version control:
+For local development, create a `functions/.env` file and populate it manually:
 
 ```bash
 cp functions/.env.example functions/.env
-firebase functions:config:get > functions/.env
-```
+# Now, open functions/.env and add your secrets from the Firebase config.
 
 ### Grant Gmail Access
 
