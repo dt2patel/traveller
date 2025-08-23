@@ -16,7 +16,12 @@ interface TokenData {
  * Function. Do not expose it to the client.
  */
 export const getGmailClient = async (userId: string) => {
-  const userRef = admin.firestore().collection('users').doc(userId);
+  const tokenRef = admin
+    .firestore()
+    .collection('users')
+    .doc(userId)
+    .collection('gmailTokens')
+    .doc('tokens');
 
   const {
     GOOGLE_CLIENT_ID,
@@ -36,7 +41,7 @@ export const getGmailClient = async (userId: string) => {
   );
 
   return admin.firestore().runTransaction(async (tx) => {
-    const snap = await tx.get(userRef);
+    const snap = await tx.get(tokenRef);
     const data = snap.data() as TokenData | undefined;
     if (!data || !data.refreshToken) {
       throw new Error('Missing OAuth tokens for user');
@@ -56,7 +61,7 @@ export const getGmailClient = async (userId: string) => {
       refreshToken = credentials.refresh_token ?? refreshToken;
 
       tx.set(
-        userRef,
+        tokenRef,
         { accessToken, refreshToken, tokenExpiry },
         { merge: true },
       );

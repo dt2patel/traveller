@@ -2,3 +2,4 @@
 .env
 .firebase
 .DS_Store
+functions/package-lock.json
