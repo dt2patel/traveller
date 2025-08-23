@@ -1,6 +1,7 @@
 import { TravelEvent, Trip, SummaryData } from '@/types';
 import { parseISO, getYear, isBefore, isAfter, differenceInMilliseconds, subDays, getMonth } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { nowUTC } from './time';
 
 /**
  * Pairs ENTRY and EXIT events into trips.
@@ -41,7 +42,7 @@ export const pairEventsToTrips = (events: TravelEvent[]): Trip[] => {
 
   // Handle a trip that is still open
   if (currentEntry) {
-    const durationMs = differenceInMilliseconds(new Date(), parseISO(currentEntry.occurredAt));
+    const durationMs = differenceInMilliseconds(parseISO(nowUTC()), parseISO(currentEntry.occurredAt));
     const warnings = [];
     if (durationMs > 120 * 24 * 60 * 60 * 1000) {
         warnings.push('Open trip is older than 120 days. Please review.');
@@ -66,7 +67,7 @@ const getOverlapMilliseconds = (tripStart: Date, tripEnd: Date, windowStart: Dat
 const calculateDaysInWindow = (trips: Trip[], windowStart: Date, windowEnd: Date): number => {
     const totalMs = trips.reduce((acc, trip) => {
         const tripStart = parseISO(trip.entry.occurredAt);
-        const tripEnd = trip.exit ? parseISO(trip.exit.occurredAt) : new Date(); // Use now for open trips
+        const tripEnd = trip.exit ? parseISO(trip.exit.occurredAt) : parseISO(nowUTC()); // Use now for open trips
         return acc + getOverlapMilliseconds(tripStart, tripEnd, windowStart, windowEnd);
     }, 0);
     return totalMs / (1000 * 60 * 60 * 24);
@@ -92,7 +93,7 @@ export const calculateSummary = (events: TravelEvent[]): Omit<SummaryData, 'data
     };
   }
   const trips = pairEventsToTrips(events);
-  const now = new Date();
+  const now = parseISO(nowUTC());
 
   // Rolling windows
   const window182End = now;
@@ -141,7 +142,7 @@ export const runForecast = (
     thresholdDays: number
   ): number => {
     const trips = pairEventsToTrips(events);
-    const now = new Date();
+    const now = parseISO(nowUTC());
     const targetDate = parseISO(targetDateISO);
   
     // Calculate days already spent in the window from past trips
