@@ -2,7 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { getGmailClient } from './gmailAuth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { gmail_v1 } from 'googleapis';
+import { google, gmail_v1 } from 'googleapis';
 
 admin.initializeApp();
 
@@ -34,6 +34,53 @@ const getMessageText = (msg: gmail_v1.Schema$Message): string => {
   }
   return decodeBody(payload.body);
 };
+
+export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
+  if (req.method !== 'POST') {
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+  const { code, userId } = req.body as { code?: string; userId?: string };
+  if (!code || !userId) {
+    res.status(400).json({ error: 'Missing code or userId' });
+    return;
+  }
+  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env;
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    res.status(500).json({ error: 'Missing Google OAuth environment variables' });
+    return;
+  }
+  try {
+    const oauth2 = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      GOOGLE_REDIRECT_URI,
+    );
+    const { tokens } = await oauth2.getToken(code);
+    if (!tokens.refresh_token) {
+      res.status(500).json({ error: 'No refresh token returned' });
+      return;
+    }
+    await admin
+      .firestore()
+      .collection('users')
+      .doc(userId)
+      .collection('gmailTokens')
+      .doc('tokens')
+      .set(
+        {
+          refreshToken: tokens.refresh_token,
+          accessToken: tokens.access_token ?? null,
+          tokenExpiry: tokens.expiry_date ?? null,
+        },
+        { merge: true },
+      );
+    res.json({ success: true });
+  } catch (err) {
+    functions.logger.error('Error exchanging Gmail code', { err });
+    res.status(500).json({ error: 'Failed to exchange code' });
+  }
+});
 
 export const importTravelEmails = functions.pubsub
   .schedule('every 24 hours')

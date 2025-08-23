@@ -45,6 +45,7 @@ const Header: React.FC = () => {
                   <NavLink to="/" className={({isActive}) => `block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${isActive ? 'bg-gray-100' : ''}`} onClick={() => setIsMenuOpen(false)}>Home</NavLink>
                   <NavLink to="/history" className={({isActive}) => `block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${isActive ? 'bg-gray-100' : ''}`} onClick={() => setIsMenuOpen(false)}>History</NavLink>
                   <NavLink to="/summary" className={({isActive}) => `block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${isActive ? 'bg-gray-100' : ''}`} onClick={() => setIsMenuOpen(false)}>Summary</NavLink>
+                  <NavLink to="/account" className={({isActive}) => `block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${isActive ? 'bg-gray-100' : ''}`} onClick={() => setIsMenuOpen(false)}>Account</NavLink>
                   <button
                     onClick={handleSignOut}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
