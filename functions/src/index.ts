@@ -59,12 +59,35 @@ export const importTravelEmails = functions.pubsub
 
         const gmail = await getGmailClient(userId);
         const after = tokenData.lastSync ? ` after:${Math.floor(tokenData.lastSync / 1000)}` : '';
-        const q = `(label:Flights OR itinerary OR "boarding pass")${after}`;
+
+        const userFilters = user.data() as {
+          gmailLabelFilters?: string[];
+          gmailSenderFilters?: string[];
+        };
+        const envLabelFilters = process.env.GMAIL_LABEL_FILTERS
+          ? process.env.GMAIL_LABEL_FILTERS.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+        const envSenderFilters = process.env.GMAIL_SENDER_FILTERS
+          ? process.env.GMAIL_SENDER_FILTERS.split(',').map((s) => s.trim()).filter(Boolean)
+          : [];
+        const labelFilters = [...envLabelFilters, ...(userFilters.gmailLabelFilters ?? [])];
+        const senderFilters = [...envSenderFilters, ...(userFilters.gmailSenderFilters ?? [])];
+
+        let query = '(label:Flights OR itinerary OR "boarding pass")';
+        if (labelFilters.length) {
+          query += ' OR ' + labelFilters.map((l) => `label:${l}`).join(' OR ');
+        }
+        if (senderFilters.length) {
+          query += ' OR ' + senderFilters.map((s) => `from:${s}`).join(' OR ');
+        }
+        const q = `${query}${after}`;
 
         const allMessages: gmail_v1.Schema$Message[] = [];
         let pageToken: string | undefined;
+        let apiCalls = 0;
         do {
           const listRes = await gmail.users.messages.list({ userId: 'me', q, pageToken });
+          apiCalls++;
           if (listRes.data.messages) {
             allMessages.push(...listRes.data.messages);
           }
@@ -72,12 +95,19 @@ export const importTravelEmails = functions.pubsub
         } while (pageToken);
 
         let hasErrors = false;
+        let skipped = 0;
+        let processed = 0;
         for (const m of allMessages) {
           if (!m.id) continue;
           try {
             const full = await gmail.users.messages.get({ userId: 'me', id: m.id, format: 'full' });
+            apiCalls++;
             const body = getMessageText(full.data);
-            if (!body) continue;
+            if (!body) {
+              functions.logger.info('Skipping message with empty body', { userId, messageId: m.id });
+              skipped++;
+              continue;
+            }
 
             const prompt = `Extract Departure, Arrival, Status from the following email. Return JSON with keys \"Departure\" ({time: <ISO>, tz: <IANA>}), \"Arrival\" ({time: <ISO>, tz: <IANA>}), and \"Status\" (ENTRY or EXIT).\n${body}`;
             const aiRes = await model.generateContent(prompt);
@@ -89,6 +119,7 @@ export const importTravelEmails = functions.pubsub
             } catch (e) {
               functions.logger.warn('Invalid JSON from AI', { userId, messageId: m.id, text });
               hasErrors = true;
+              skipped++;
               continue;
             }
 
@@ -106,6 +137,7 @@ export const importTravelEmails = functions.pubsub
                 text,
               });
               hasErrors = true;
+              skipped++;
               continue;
             }
 
@@ -136,8 +168,10 @@ export const importTravelEmails = functions.pubsub
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
               });
+              processed++;
               functions.logger.info('Imported travel event', { userId, occurredAt: event.occurredAt });
             } else {
+              skipped++;
               functions.logger.info('Duplicate event skipped', { userId, occurredAt: event.occurredAt });
             }
           } catch (err) {
@@ -145,6 +179,14 @@ export const importTravelEmails = functions.pubsub
             functions.logger.error('Error processing message', { userId, messageId: m.id, err });
           }
         }
+
+        functions.logger.info('Gmail import summary', {
+          userId,
+          total: allMessages.length,
+          processed,
+          skipped,
+          apiCalls,
+        });
 
         if (!hasErrors) {
           await tokenRef.set({ lastSync: runAt }, { merge: true });
