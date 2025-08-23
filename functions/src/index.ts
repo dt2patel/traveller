@@ -56,15 +56,15 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
     return;
   }
 
-  const { authCode } = req.body as { authCode?: string };
-  if (!authCode) {
-    res.status(400).json({ success: false, error: 'Missing auth code' });
+  const code = req.body?.code;
+  if (typeof code !== 'string' || code.length === 0) {
+    res.status(400).json({ success: false, error: 'Missing or invalid auth code' });
     return;
   }
 
   try {
     const oauth2 = getOAuth2Client();
-    const { tokens } = await oauth2.getToken(authCode);
+    const { tokens } = await oauth2.getToken(code);
     if (!tokens.refresh_token) {
       res.status(500).json({ success: false, error: 'No refresh token returned' });
       return;
