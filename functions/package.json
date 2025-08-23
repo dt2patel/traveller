@@ -2,9 +2,18 @@
   "name": "traveller-functions",
   "private": true,
   "type": "module",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc"
+  },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "firebase-admin": "^11.11.1",
     "firebase-functions": "^4.4.1",
     "googleapis": "^129.0.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
   }
 }

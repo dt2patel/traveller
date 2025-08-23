@@ -156,13 +156,18 @@ The project can send automated summaries using Gmail and Google's Gemini API thr
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), enable both the **Gmail API** and the **Gemini API**.
 2. Configure the **OAuth consent screen** under **APIs & Services** and create OAuth client credentials.
-3. Add the following entries to your `.env.local` file:
+3. Store the credentials for Cloud Functions using the Firebase CLI:
 
 ```bash
-GMAIL_CLIENT_ID="your-oauth-client-id.apps.googleusercontent.com"
-GMAIL_CLIENT_SECRET="your-oauth-client-secret"
-GEMINI_API_KEY="your-gemini-api-key"
+firebase functions:config:set \
+  google.client_id="your-oauth-client-id.apps.googleusercontent.com" \
+  google.client_secret="your-oauth-client-secret" \
+  google.redirect_uri="https://your-domain.com/oauth2callback" \
+  gemini.key="your-gemini-api-key"
+firebase functions:config:get > functions/.env
 ```
+
+The generated `functions/.env` file is used for local development. Never commit real secrets to version control.
 
 ### Grant Gmail Access
 
