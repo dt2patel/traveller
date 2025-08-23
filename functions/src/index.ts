@@ -64,22 +64,23 @@ export const importTravelEmails = functions.pubsub
           gmailLabelFilters?: string[];
           gmailSenderFilters?: string[];
         };
-        const envLabelFilters = process.env.GMAIL_LABEL_FILTERS
-          ? process.env.GMAIL_LABEL_FILTERS.split(',').map((s) => s.trim()).filter(Boolean)
-          : [];
-        const envSenderFilters = process.env.GMAIL_SENDER_FILTERS
-          ? process.env.GMAIL_SENDER_FILTERS.split(',').map((s) => s.trim()).filter(Boolean)
-          : [];
+
+        const getFiltersFromEnv = (envVar?: string): string[] => {
+          if (!envVar) return [];
+          return envVar.split(',').map((s) => s.trim()).filter(Boolean);
+        };
+        const envLabelFilters = getFiltersFromEnv(process.env.GMAIL_LABEL_FILTERS);
+        const envSenderFilters = getFiltersFromEnv(process.env.GMAIL_SENDER_FILTERS);
+
         const labelFilters = [...envLabelFilters, ...(userFilters.gmailLabelFilters ?? [])];
         const senderFilters = [...envSenderFilters, ...(userFilters.gmailSenderFilters ?? [])];
 
-        let query = '(label:Flights OR itinerary OR "boarding pass")';
-        if (labelFilters.length) {
-          query += ' OR ' + labelFilters.map((l) => `label:${l}`).join(' OR ');
-        }
-        if (senderFilters.length) {
-          query += ' OR ' + senderFilters.map((s) => `from:${s}`).join(' OR ');
-        }
+        const queryClauses = [
+          '(label:Flights OR itinerary OR "boarding pass")',
+          ...labelFilters.map((l) => `label:${l}`),
+          ...senderFilters.map((s) => `from:${s}`),
+        ];
+        const query = queryClauses.join(' OR ');
         const q = `${query}${after}`;
 
         const allMessages: gmail_v1.Schema$Message[] = [];
