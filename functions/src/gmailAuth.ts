@@ -7,6 +7,25 @@ interface TokenData {
   tokenExpiry?: number;
 }
 
+export const createOAuth2Client = () => {
+  const {
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI,
+  } = process.env;
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    throw new Error(
+      'Missing one or more required Google OAuth environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI',
+    );
+  }
+
+  return new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI,
+  );
+};
+
 /**
  * Returns a Gmail API client with a valid access token for the given user.
  * If the stored token is missing or expired, this helper refreshes it using
@@ -23,22 +42,7 @@ export const getGmailClient = async (userId: string) => {
     .collection('gmailTokens')
     .doc('tokens');
 
-  const {
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI,
-  } = process.env;
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
-    throw new Error(
-      'Missing one or more required Google OAuth environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI',
-    );
-  }
-
-  const oauth2 = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI,
-  );
+  const oauth2 = createOAuth2Client();
 
   return admin.firestore().runTransaction(async (tx) => {
     const snap = await tx.get(tokenRef);

@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { getGmailClient } from './gmailAuth';
+import { getGmailClient, createOAuth2Client } from './gmailAuth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { gmail_v1 } from 'googleapis';
 
@@ -34,6 +34,41 @@ const getMessageText = (msg: gmail_v1.Schema$Message): string => {
   }
   return decodeBody(payload.body);
 };
+
+export const exchangeGmailCode = functions.https.onCall(async (data, context) => {
+  const uid = context.auth?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
+  const authCode = data?.authCode;
+  if (typeof authCode !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'authCode is required');
+  }
+
+  try {
+    const oauth2 = createOAuth2Client();
+    const { tokens } = await oauth2.getToken(authCode);
+    if (!tokens.refresh_token || !tokens.access_token) {
+      throw new Error('Missing tokens');
+    }
+    await admin
+      .firestore()
+      .collection('users')
+      .doc(uid)
+      .collection('gmailTokens')
+      .doc('tokens')
+      .set({
+        refreshToken: tokens.refresh_token,
+        accessToken: tokens.access_token,
+        tokenExpiry: tokens.expiry_date ?? null,
+      });
+    return { success: true };
+  } catch (err) {
+    functions.logger.error('Failed to exchange Gmail auth code', { uid, err });
+    return { success: false };
+  }
+});
 
 export const importTravelEmails = functions.pubsub
   .schedule('every 24 hours')
