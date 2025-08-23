@@ -1,0 +1,10 @@
+{
+  "name": "traveller-functions",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.4.1",
+    "googleapis": "^129.0.0"
+  }
+}
