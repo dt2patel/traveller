@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { getGmailClient, getOAuth2Client } from './gmailAuth';
+import { getGmailClient, getOAuth2Client } from './gmailAuth.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { gmail_v1 } from 'googleapis';
 
