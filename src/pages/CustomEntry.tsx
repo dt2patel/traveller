@@ -5,7 +5,7 @@ import { useEvents } from '@/hooks/useEvents';
 import { useVibration } from '@/hooks/useVibration';
 import Button from '@/components/ui/Button';
 import DateTimePicker from '@/components/DateTimePicker';
-import { EventType, TravelEvent } from '@/types';
+import { EventType } from '@/types';
 import toast from 'react-hot-toast';
 
 const CustomEntry: React.FC = () => {

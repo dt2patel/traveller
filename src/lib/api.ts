@@ -1,7 +1,6 @@
-
-import { collection, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { db as firestoreDb } from './firebase';
+import type firebase from 'firebase/compat/app';
 import {
   getLocalEvents,
   putLocalEvent,
@@ -13,7 +12,7 @@ import {
 import { TravelEvent, NewTravelEvent, UpdateTravelEvent, QueuedItem } from '@/types';
 import { nowUTC } from './time';
 
-const getEventsCollection = (userId: string) => collection(firestoreDb, 'users', userId, 'events');
+const getEventsCollection = (userId: string) => firestoreDb.collection('users').doc(userId).collection('events');
 
 // --- Public API ---
 
@@ -143,15 +142,15 @@ const processQueueItem = async (item: QueuedItem) => {
     case 'update': {
       const event = payload as TravelEvent;
       const { syncStatus, ...firestorePayload } = event; // Don't save syncStatus to Firestore
-      const eventDocRef = doc(eventsCollection, event.id);
-      await setDoc(eventDocRef, firestorePayload, { merge: true });
+      const eventDocRef = eventsCollection.doc(event.id);
+      await eventDocRef.set(firestorePayload, { merge: true });
       await putLocalEvent({ ...event, syncStatus: 'synced' });
       break;
     }
     case 'delete': {
       const { id } = payload;
-      const eventDocRef = doc(eventsCollection, id);
-      await deleteDoc(eventDocRef);
+      const eventDocRef = eventsCollection.doc(id);
+      await eventDocRef.delete();
       // Local deletion already happened
       break;
     }
@@ -162,9 +161,9 @@ const processQueueItem = async (item: QueuedItem) => {
 // --- Firestore Direct Access ---
 
 const fetchEventsFromFirestore = async (userId: string): Promise<TravelEvent[]> => {
-  const querySnapshot = await getDocs(getEventsCollection(userId));
-  return querySnapshot.docs.map(doc => ({
-    ...doc.data() as Omit<TravelEvent, 'id'>,
+  const querySnapshot = await getEventsCollection(userId).get();
+  return querySnapshot.docs.map((doc: firebase.firestore.QueryDocumentSnapshot) => ({
+    ...(doc.data() as Omit<TravelEvent, 'id' | 'syncStatus'>),
     id: doc.id,
   }));
 };

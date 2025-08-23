@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getEvents, addEvent, updateEvent, deleteEvent } from '@/lib/api';
-import { EventType, NewTravelEvent, TravelEvent, UpdateTravelEvent } from '@/types';
+import { NewTravelEvent, TravelEvent, UpdateTravelEvent, EventType } from '@/types';
 import { useAuth } from './useAuth';
 import toast from 'react-hot-toast';
 
