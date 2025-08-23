@@ -164,10 +164,12 @@ firebase functions:config:set \
   google.client_secret="your-oauth-client-secret" \
   google.redirect_uri="https://your-domain.com/oauth2callback" \
   gemini.key="your-gemini-api-key"
+
+cp functions/.env.example functions/.env
 firebase functions:config:get > functions/.env
 ```
 
-The generated `functions/.env` file is used for local development. Never commit real secrets to version control.
+Copy the example file before fetching config values. The resulting `functions/.env` file is used for local development. Never commit real secrets to version control.
 
 ### Grant Gmail Access
 
