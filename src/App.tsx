@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import History from './pages/History';
 import CustomEntry from './pages/CustomEntry';
 import Summary from './pages/Summary';
+import Account from './pages/Account';
 import Auth from './pages/Auth';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
@@ -60,6 +61,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/" element={<Home />} />
           <Route path="/history" element={<History />} />
           <Route path="/summary" element={<Summary />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/custom-entry" element={<CustomEntry />} />
           <Route path="/custom-entry/:id" element={<CustomEntry />} />
           <Route path="/auth" element={<Auth />} />
