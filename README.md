@@ -154,22 +154,33 @@ The project can send automated summaries using Gmail and Google's Gemini API thr
 
 ### Enable APIs & Set Up OAuth
 
-1. In the [Google Cloud Console](https://console.cloud.google.com/), enable both the **Gmail API** and the **Gemini API**.
+1. In the [Google Cloud Console](https://console.cloud.google.com/), enable both the **Gmail API** and the **Generative AI API**.
 2. Configure the **OAuth consent screen** under **APIs & Services** and create OAuth client credentials.
-3. Store the credentials for Cloud Functions using the Firebase CLI:
+
+### Set Environment Variables
+
+The Cloud Function requires the following environment variables:
+
+- `GEMINI_API_KEY`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+
+Set them securely using the Firebase CLI so they are stored in your project config:
 
 ```bash
 firebase functions:config:set \
+  gemini.api_key="your-gemini-api-key" \
   google.client_id="your-oauth-client-id.apps.googleusercontent.com" \
   google.client_secret="your-oauth-client-secret" \
-  google.redirect_uri="https://your-domain.com/oauth2callback" \
-  gemini.key="your-gemini-api-key"
-
-cp functions/.env.example functions/.env
-firebase functions:config:get > functions/.env
+  google.redirect_uri="https://your-domain.com/oauth2callback"
 ```
 
-Copy the example file before fetching config values. The resulting `functions/.env` file is used for local development. Never commit real secrets to version control.
+For local development, create a `functions/.env` file and populate it manually:
+
+```bash
+cp functions/.env.example functions/.env
+# Now, open functions/.env and add your secrets from the Firebase config.
 
 ### Grant Gmail Access
 
