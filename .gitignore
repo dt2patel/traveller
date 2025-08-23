@@ -2,7 +2,8 @@
 .env
 functions/.env
 .firebase
+.DS_Store
+functions/package-lock.json
 functions/node_modules
 functions/lib
-.DS_Store
 package-lock.json
