@@ -17,39 +17,57 @@ interface TokenData {
  */
 export const getGmailClient = async (userId: string) => {
   const userRef = admin.firestore().collection('users').doc(userId);
-  const snap = await userRef.get();
-  const data = snap.data() as TokenData | undefined;
-  if (!data || !data.refreshToken) {
-    throw new Error('Missing OAuth tokens for user');
-  }
 
-  let { accessToken, refreshToken, tokenExpiry } = data;
-  const now = Date.now();
-
-  const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI,
-  );
-
-  if (!accessToken || !tokenExpiry || tokenExpiry <= now) {
-    oauth2.setCredentials({ refresh_token: refreshToken });
-    const { credentials } = await oauth2.refreshAccessToken();
-    accessToken = credentials.access_token || undefined;
-    tokenExpiry = credentials.expiry_date || undefined;
-    refreshToken = credentials.refresh_token || refreshToken;
-
-    await userRef.set(
-      { accessToken, refreshToken, tokenExpiry },
-      { merge: true }
+  const {
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI,
+  } = process.env;
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
+    throw new Error(
+      'Missing one or more required Google OAuth environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI',
     );
   }
 
-  oauth2.setCredentials({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expiry_date: tokenExpiry,
-  });
+  const oauth2 = new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_REDIRECT_URI,
+  );
 
-  return google.gmail({ version: 'v1', auth: oauth2 });
+  return admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    const data = snap.data() as TokenData | undefined;
+    if (!data || !data.refreshToken) {
+      throw new Error('Missing OAuth tokens for user');
+    }
+
+    let { accessToken, refreshToken, tokenExpiry } = data;
+    const now = Date.now();
+
+    if (!accessToken || !tokenExpiry || tokenExpiry <= now) {
+      oauth2.setCredentials({ refresh_token: refreshToken });
+      const { credentials } = await oauth2.refreshAccessToken();
+      if (!credentials.access_token) {
+        throw new Error('Failed to refresh access token.');
+      }
+      accessToken = credentials.access_token;
+      tokenExpiry = credentials.expiry_date ?? undefined;
+      refreshToken = credentials.refresh_token ?? refreshToken;
+
+      tx.set(
+        userRef,
+        { accessToken, refreshToken, tokenExpiry },
+        { merge: true },
+      );
+    }
+
+    oauth2.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expiry_date: tokenExpiry,
+    });
+
+    return google.gmail({ version: 'v1', auth: oauth2 });
+  });
 };
