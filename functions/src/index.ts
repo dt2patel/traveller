@@ -1,8 +1,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { getGmailClient } from './gmailAuth';
+import { getGmailClient, getOAuth2Client } from './gmailAuth';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { google, gmail_v1 } from 'googleapis';
+import { gmail_v1 } from 'googleapis';
 
 admin.initializeApp();
 
@@ -37,12 +37,12 @@ const getMessageText = (msg: gmail_v1.Schema$Message): string => {
 
 export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
   if (req.method !== 'POST') {
-    res.status(405).send('Method Not Allowed');
+    res.status(405).json({ success: false, error: 'Method Not Allowed' });
     return;
   }
   const idToken = req.headers.authorization?.split('Bearer ')[1];
   if (!idToken) {
-    res.status(401).send('Unauthorized');
+    res.status(401).json({ success: false, error: 'Unauthorized' });
     return;
   }
 
@@ -52,29 +52,21 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
     userId = decodedToken.uid;
   } catch (error) {
     functions.logger.error('Error verifying auth token', { error });
-    res.status(401).send('Unauthorized');
+    res.status(401).json({ success: false, error: 'Unauthorized' });
     return;
   }
 
-  const { code } = req.body as { code?: string };
-  if (!code) {
-    res.status(400).json({ error: 'Missing code' });
+  const { authCode } = req.body as { authCode?: string };
+  if (!authCode) {
+    res.status(400).json({ success: false, error: 'Missing auth code' });
     return;
   }
-  const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env;
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
-    res.status(500).json({ error: 'Missing Google OAuth environment variables' });
-    return;
-  }
+
   try {
-    const oauth2 = new google.auth.OAuth2(
-      GOOGLE_CLIENT_ID,
-      GOOGLE_CLIENT_SECRET,
-      GOOGLE_REDIRECT_URI,
-    );
-    const { tokens } = await oauth2.getToken(code);
+    const oauth2 = getOAuth2Client();
+    const { tokens } = await oauth2.getToken(authCode);
     if (!tokens.refresh_token) {
-      res.status(500).json({ error: 'No refresh token returned' });
+      res.status(500).json({ success: false, error: 'No refresh token returned' });
       return;
     }
     await admin
@@ -94,7 +86,7 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     functions.logger.error('Error exchanging Gmail code', { err });
-    res.status(500).json({ error: 'Failed to exchange code' });
+    res.status(500).json({ success: false, error: 'Failed to exchange code' });
   }
 });
 
