@@ -40,9 +40,25 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
     res.status(405).send('Method Not Allowed');
     return;
   }
-  const { code, userId } = req.body as { code?: string; userId?: string };
-  if (!code || !userId) {
-    res.status(400).json({ error: 'Missing code or userId' });
+  const idToken = req.headers.authorization?.split('Bearer ')[1];
+  if (!idToken) {
+    res.status(401).send('Unauthorized');
+    return;
+  }
+
+  let userId: string;
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    userId = decodedToken.uid;
+  } catch (error) {
+    functions.logger.error('Error verifying auth token', { error });
+    res.status(401).send('Unauthorized');
+    return;
+  }
+
+  const { code } = req.body as { code?: string };
+  if (!code) {
+    res.status(400).json({ error: 'Missing code' });
     return;
   }
   const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI } = process.env;

@@ -24,12 +24,12 @@ const Account: React.FC = () => {
 
     if (code && user) {
       setLoading(true);
-      sendGmailAuthCode(code, user.uid)
+      sendGmailAuthCode(code)
         .then(() => {
           toast.success('Gmail connected');
         })
-        .catch(() => {
-          toast.error('Failed to connect Gmail');
+        .catch((err: Error) => {
+          toast.error(err.message || 'Failed to connect Gmail');
         })
         .finally(() => {
           setLoading(false);
