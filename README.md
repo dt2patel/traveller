@@ -147,3 +147,38 @@ The app icon will now appear on your home screen, and it will launch in a standa
 ### Conflict Resolution
 
 - The app uses a "last write wins" strategy. If you modify the same event on two different devices while they are both offline, the change with the later `updatedAt` timestamp will overwrite the other when they both sync.
+
+## 6. Gmail & Gemini Email Summaries
+
+The project can send automated summaries using Gmail and Google's Gemini API through a scheduled Cloud Function.
+
+### Enable APIs & Set Up OAuth
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), enable both the **Gmail API** and the **Gemini API**.
+2. Configure the **OAuth consent screen** under **APIs & Services** and create OAuth client credentials.
+3. Add the following entries to your `.env.local` file:
+
+```bash
+GMAIL_CLIENT_ID="your-oauth-client-id.apps.googleusercontent.com"
+GMAIL_CLIENT_SECRET="your-oauth-client-secret"
+GEMINI_API_KEY="your-gemini-api-key"
+```
+
+### Grant Gmail Access
+
+Run the token generation script in the `functions` directory and follow the browser prompts to authorize access. The script stores the OAuth tokens locally so the Cloud Function can send email on your behalf.
+
+### Deploy the Scheduled Cloud Function
+
+Deploy the function after authentication:
+
+```bash
+firebase deploy --only functions
+```
+
+The function runs on a schedule to send summaries via Gmail and Gemini. Free-tier accounts have daily quotas for sending email and calling the Gemini API, so heavy use may exhaust the allowance.
+
+### Troubleshooting
+
+If the function fails to run, check the execution logs in the Google Cloud Console (**Cloud Functions > Logs**) to diagnose authentication or quota issues.
+
