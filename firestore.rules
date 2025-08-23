@@ -17,5 +17,9 @@ service cloud.firestore {
     match /users/{userId}/events/{eventId} {
       allow read, write: if isOwner(userId);
     }
+
+    match /users/{userId}/gmailTokens/{tokenDoc} {
+      allow read, write: if false;
+    }
   }
 }

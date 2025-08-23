@@ -50,7 +50,11 @@ export const exchangeGmailCode = functions.https.onCall(async (data, context) =>
     const oauth2 = createOAuth2Client();
     const { tokens } = await oauth2.getToken(authCode);
     if (!tokens.refresh_token || !tokens.access_token) {
-      throw new Error('Missing tokens');
+      functions.logger.error('Missing tokens from Google', { tokens });
+      throw new functions.https.HttpsError(
+        'internal',
+        'Failed to retrieve required tokens from Google.'
+      );
     }
     await admin
       .firestore()
@@ -65,8 +69,14 @@ export const exchangeGmailCode = functions.https.onCall(async (data, context) =>
       });
     return { success: true };
   } catch (err) {
+    if (err instanceof functions.https.HttpsError) {
+      throw err;
+    }
     functions.logger.error('Failed to exchange Gmail auth code', { uid, err });
-    return { success: false };
+    throw new functions.https.HttpsError(
+      'internal',
+      'An unexpected error occurred while exchanging the auth code.'
+    );
   }
 });
 
