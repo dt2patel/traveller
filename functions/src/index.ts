@@ -14,7 +14,11 @@ interface TravelEvent {
   [key: string]: unknown;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const geminiApiKey = process.env.GEMINI_API_KEY;
+if (!geminiApiKey) {
+  throw new Error('GEMINI_API_KEY environment variable not set.');
+}
+const genAI = new GoogleGenerativeAI(geminiApiKey);
 const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
 const decodeBody = (body: gmail_v1.Schema$MessagePartBody | undefined): string => {
@@ -37,7 +41,7 @@ export const importTravelEmails = functions.pubsub
     const usersSnap = await admin.firestore().collection('users').get();
     const runAt = Date.now();
 
-    for (const user of usersSnap.docs) {
+    const processUser = async (user: FirebaseFirestore.QueryDocumentSnapshot) => {
       const userId = user.id;
       const tokenRef = admin
         .firestore()
@@ -50,17 +54,25 @@ export const importTravelEmails = functions.pubsub
         const tokenData = (await tokenRef.get()).data() as { lastSync?: number; refreshToken?: string } | undefined;
         if (!tokenData || !tokenData.refreshToken) {
           functions.logger.info('No Gmail tokens for user', { userId });
-          continue;
+          return;
         }
 
         const gmail = await getGmailClient(userId);
         const after = tokenData.lastSync ? ` after:${Math.floor(tokenData.lastSync / 1000)}` : '';
         const q = `(label:Flights OR itinerary OR "boarding pass")${after}`;
 
-        const listRes = await gmail.users.messages.list({ userId: 'me', q });
-        const messages = listRes.data.messages ?? [];
+        const allMessages: gmail_v1.Schema$Message[] = [];
+        let pageToken: string | undefined;
+        do {
+          const listRes = await gmail.users.messages.list({ userId: 'me', q, pageToken });
+          if (listRes.data.messages) {
+            allMessages.push(...listRes.data.messages);
+          }
+          pageToken = listRes.data.nextPageToken || undefined;
+        } while (pageToken);
 
-        for (const m of messages) {
+        let hasErrors = false;
+        for (const m of allMessages) {
           if (!m.id) continue;
           try {
             const full = await gmail.users.messages.get({ userId: 'me', id: m.id, format: 'full' });
@@ -70,7 +82,32 @@ export const importTravelEmails = functions.pubsub
             const prompt = `Extract Departure, Arrival, Status from the following email. Return JSON with keys \"Departure\" ({time: <ISO>, tz: <IANA>}), \"Arrival\" ({time: <ISO>, tz: <IANA>}), and \"Status\" (ENTRY or EXIT).\n${body}`;
             const aiRes = await model.generateContent(prompt);
             const text = aiRes.response.text().trim();
-            const parsed = JSON.parse(text);
+
+            let parsed: any;
+            try {
+              parsed = JSON.parse(text);
+            } catch (e) {
+              functions.logger.warn('Invalid JSON from AI', { userId, messageId: m.id, text });
+              hasErrors = true;
+              continue;
+            }
+
+            if (
+              !parsed ||
+              (parsed.Status !== 'EXIT' && parsed.Status !== 'ENTRY') ||
+              typeof parsed.Departure?.time !== 'string' ||
+              typeof parsed.Departure?.tz !== 'string' ||
+              typeof parsed.Arrival?.time !== 'string' ||
+              typeof parsed.Arrival?.tz !== 'string'
+            ) {
+              functions.logger.warn('Skipping message due to invalid or incomplete data from AI', {
+                userId,
+                messageId: m.id,
+                text,
+              });
+              hasErrors = true;
+              continue;
+            }
 
             const event: TravelEvent =
               parsed.Status === 'EXIT'
@@ -104,13 +141,18 @@ export const importTravelEmails = functions.pubsub
               functions.logger.info('Duplicate event skipped', { userId, occurredAt: event.occurredAt });
             }
           } catch (err) {
-            functions.logger.error('Error processing message', { userId, err });
+            hasErrors = true;
+            functions.logger.error('Error processing message', { userId, messageId: m.id, err });
           }
         }
 
-        await tokenRef.set({ lastSync: runAt }, { merge: true });
+        if (!hasErrors) {
+          await tokenRef.set({ lastSync: runAt }, { merge: true });
+        }
       } catch (err) {
         functions.logger.error('Error processing user', { userId, err });
       }
-    }
+    };
+
+    await Promise.allSettled(usersSnap.docs.map(processUser));
   });
