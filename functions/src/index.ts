@@ -45,7 +45,7 @@ const getMessageText = (msg: gmail_v1.Schema$Message): string => {
   return decodeBody(payload.body);
 };
 
-export const exchangeGmailCode = onRequest({ secrets: [GEMINI_API_KEY] }, async (req, res) => {
+export const exchangeGmailCode = onRequest(async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
     return;
@@ -261,9 +261,14 @@ export const importTravelEmails = onSchedule(
         }
       } catch (err) {
         logger.error('Error processing user', { userId, err });
+        throw err;
       }
     };
 
-    await Promise.allSettled(usersSnap.docs.map(processUser));
+    const results = await Promise.allSettled(usersSnap.docs.map(processUser));
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length > 0) {
+      logger.error(`${failures.length} out of ${usersSnap.docs.length} users failed to process.`);
+    }
   },
 );
