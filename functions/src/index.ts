@@ -9,7 +9,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { gmail_v1 } from 'googleapis';
 import type { Request, Response } from 'express';
 
-setGlobalOptions({ region: 'us-central1' });
+setGlobalOptions({ region: defineString('FUNCTIONS_REGION', { default: 'us-central1' }).value() });
 admin.initializeApp();
 
 export const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
