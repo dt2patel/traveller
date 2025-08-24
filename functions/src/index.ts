@@ -48,6 +48,11 @@ const getMessageText = (msg: gmail_v1.Schema$Message): string => {
   return decodeBody(payload.body);
 };
 
+const getFiltersFromParam = (param: string): string[] => {
+  if (!param) return [];
+  return param.split(',').map((s) => s.trim()).filter(Boolean);
+};
+
 export const exchangeGmailCode = onRequest({ secrets: [GOOGLE_CLIENT_SECRET] }, async (req: Request, res: Response) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -111,6 +116,9 @@ export const importTravelEmails = onSchedule(
 
     const model = getGeminiModel();
 
+    const envLabelFilters = getFiltersFromParam(GMAIL_LABEL_FILTERS.value());
+    const envSenderFilters = getFiltersFromParam(GMAIL_SENDER_FILTERS.value());
+
     const processUser = async (user: FirebaseFirestore.QueryDocumentSnapshot) => {
       const userId = user.id;
       const tokenRef = admin
@@ -134,13 +142,6 @@ export const importTravelEmails = onSchedule(
           gmailLabelFilters?: string[];
           gmailSenderFilters?: string[];
         };
-
-        const getFiltersFromParam = (param: string): string[] => {
-          if (!param) return [];
-          return param.split(',').map((s) => s.trim()).filter(Boolean);
-        };
-        const envLabelFilters = getFiltersFromParam(GMAIL_LABEL_FILTERS.value());
-        const envSenderFilters = getFiltersFromParam(GMAIL_SENDER_FILTERS.value());
 
         const labelFilters = [...envLabelFilters, ...(userFilters.gmailLabelFilters ?? [])];
         const senderFilters = [...envSenderFilters, ...(userFilters.gmailSenderFilters ?? [])];
