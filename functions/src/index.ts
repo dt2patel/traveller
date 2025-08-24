@@ -1,5 +1,6 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { setGlobalOptions } from 'firebase-functions/v2';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { logger } from 'firebase-functions';
 import admin from 'firebase-admin';
@@ -8,6 +9,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { gmail_v1 } from 'googleapis';
 import type { Request, Response } from 'express';
 
+setGlobalOptions({ region: defineString('FUNCTIONS_REGION', { default: 'us-central1' }).value() });
 admin.initializeApp();
 
 export const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
