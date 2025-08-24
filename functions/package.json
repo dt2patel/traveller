@@ -8,8 +8,8 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "firebase-admin": "^11.11.1",
-    "firebase-functions": "^4.4.1",
+    "firebase-admin": "latest",
+    "firebase-functions": "latest",
     "googleapis": "^129.0.0"
   },
   "devDependencies": {
