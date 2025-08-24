@@ -14,12 +14,23 @@ interface TravelEvent {
   [key: string]: unknown;
 }
 
-const geminiApiKey = process.env.GEMINI_API_KEY;
-if (!geminiApiKey) {
-  throw new Error('GEMINI_API_KEY environment variable not set.');
-}
-const genAI = new GoogleGenerativeAI(geminiApiKey);
-const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+const getGeminiModel = (() => {
+  let model: import('@google/generative-ai').GenerativeModel | undefined;
+  return () => {
+    if (model) {
+      return model;
+    }
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error(
+        'GEMINI_API_KEY is not set. Define it with: firebase functions:secrets:set GEMINI_API_KEY',
+      );
+    }
+    const genAI = new GoogleGenerativeAI(key);
+    model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    return model;
+  };
+})();
 
 const decodeBody = (body: gmail_v1.Schema$MessagePartBody | undefined): string => {
   if (!body?.data) return '';
@@ -90,11 +101,14 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
   }
 });
 
-export const importTravelEmails = functions.pubsub
-  .schedule('every 24 hours')
+export const importTravelEmails = functions
+  .runWith({ secrets: ['GEMINI_API_KEY'] })
+  .pubsub.schedule('every 24 hours')
   .onRun(async () => {
     const usersSnap = await admin.firestore().collection('users').get();
     const runAt = Date.now();
+
+    const model = getGeminiModel();
 
     const processUser = async (user: FirebaseFirestore.QueryDocumentSnapshot) => {
       const userId = user.id;
