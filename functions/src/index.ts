@@ -2,14 +2,14 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { logger } from 'firebase-functions';
+import * as logger from 'firebase-functions/logger';
 import admin from 'firebase-admin';
 import { getGmailClient, getOAuth2Client, GOOGLE_CLIENT_SECRET } from './gmailAuth.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { gmail_v1 } from 'googleapis';
 import type { Request, Response } from 'express';
 
-setGlobalOptions({ region: defineString('FUNCTIONS_REGION', { default: 'us-central1' }).value() });
+setGlobalOptions({ region: 'us-central1' });
 admin.initializeApp();
 
 export const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
@@ -55,7 +55,7 @@ const getFiltersFromParam = (param: string): string[] => {
   return param.split(',').map((s) => s.trim()).filter(Boolean);
 };
 
-export const exchangeGmailCode = onRequest({ secrets: [GOOGLE_CLIENT_SECRET] }, async (req: Request, res: Response) => {
+export const exchangeGmailCode = onRequest({ region: 'us-central1', secrets: [GOOGLE_CLIENT_SECRET] }, async (req: Request, res: Response) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
     return;
@@ -111,7 +111,7 @@ export const exchangeGmailCode = onRequest({ secrets: [GOOGLE_CLIENT_SECRET] }, 
 });
 
 export const importTravelEmails = onSchedule(
-  { schedule: 'every 24 hours', secrets: [GEMINI_API_KEY, GOOGLE_CLIENT_SECRET] },
+  { schedule: 'every 24 hours', secrets: [GEMINI_API_KEY, GOOGLE_CLIENT_SECRET], region: 'us-central1' },
   async () => {
     const usersSnap = await admin.firestore().collection('users').get();
     const runAt = Date.now();
