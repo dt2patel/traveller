@@ -14,16 +14,23 @@ interface TravelEvent {
   [key: string]: unknown;
 }
 
-function getGeminiModel() {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    throw new Error(
-      'GEMINI_API_KEY is not set. Define it with: firebase functions:secrets:set GEMINI_API_KEY',
-    );
-  }
-  const genAI = new GoogleGenerativeAI(key);
-  return genAI.getGenerativeModel({ model: 'gemini-pro' });
-}
+const getGeminiModel = (() => {
+  let model: import('@google/generative-ai').GenerativeModel | undefined;
+  return () => {
+    if (model) {
+      return model;
+    }
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error(
+        'GEMINI_API_KEY is not set. Define it with: firebase functions:secrets:set GEMINI_API_KEY',
+      );
+    }
+    const genAI = new GoogleGenerativeAI(key);
+    model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    return model;
+  };
+})();
 
 const decodeBody = (body: gmail_v1.Schema$MessagePartBody | undefined): string => {
   if (!body?.data) return '';
