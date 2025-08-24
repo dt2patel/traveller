@@ -1,5 +1,5 @@
-import { onRequest } from 'firebase-functions/https';
-import { onSchedule } from 'firebase-functions/scheduler';
+import { onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { defineSecret } from 'firebase-functions/params';
 import { logger } from 'firebase-functions';
 import admin from 'firebase-admin';
