@@ -3,7 +3,6 @@
 functions/.env
 .firebase
 .DS_Store
-functions/package-lock.json
 functions/node_modules
 functions/lib
 package-lock.json
