@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import { google } from 'googleapis';
+import { defineSecret, defineString } from 'firebase-functions/params';
 
 interface TokenData {
   accessToken?: string;
@@ -7,23 +8,16 @@ interface TokenData {
   tokenExpiry?: number;
 }
 
-export const getOAuth2Client = () => {
-  const {
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI,
-  } = process.env;
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REDIRECT_URI) {
-    throw new Error(
-      'Missing one or more required Google OAuth environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI',
-    );
-  }
+export const GOOGLE_CLIENT_ID = defineString('GOOGLE_CLIENT_ID');
+export const GOOGLE_CLIENT_SECRET = defineSecret('GOOGLE_CLIENT_SECRET');
+export const GOOGLE_REDIRECT_URI = defineString('GOOGLE_REDIRECT_URI');
 
-  return new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI,
-  );
+export const getOAuth2Client = () => {
+  const clientId = GOOGLE_CLIENT_ID.value();
+  const clientSecret = GOOGLE_CLIENT_SECRET.value();
+  const redirectUri = GOOGLE_REDIRECT_URI.value();
+
+  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 };
 
 /**
