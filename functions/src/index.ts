@@ -1,10 +1,15 @@
-import * as functions from 'firebase-functions/v1';
+import { onRequest } from 'firebase-functions/https';
+import { onSchedule } from 'firebase-functions/scheduler';
+import { defineSecret } from 'firebase-functions/params';
+import { logger } from 'firebase-functions';
 import admin from 'firebase-admin';
 import { getGmailClient, getOAuth2Client } from './gmailAuth.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { gmail_v1 } from 'googleapis';
 
 admin.initializeApp();
+
+const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
 
 interface TravelEvent {
   type: 'ENTRY' | 'EXIT';
@@ -20,13 +25,7 @@ const getGeminiModel = (() => {
     if (model) {
       return model;
     }
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) {
-      throw new Error(
-        'GEMINI_API_KEY is not set. Define it with: firebase functions:secrets:set GEMINI_API_KEY',
-      );
-    }
-    const genAI = new GoogleGenerativeAI(key);
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY.value());
     model = genAI.getGenerativeModel({ model: 'gemini-pro' });
     return model;
   };
@@ -46,7 +45,7 @@ const getMessageText = (msg: gmail_v1.Schema$Message): string => {
   return decodeBody(payload.body);
 };
 
-export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
+export const exchangeGmailCode = onRequest({ secrets: [GEMINI_API_KEY] }, async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ success: false, error: 'Method Not Allowed' });
     return;
@@ -62,7 +61,7 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     userId = decodedToken.uid;
   } catch (error) {
-    functions.logger.error('Error verifying auth token', { error });
+    logger.error('Error verifying auth token', { error });
     res.status(401).json({ success: false, error: 'Unauthorized' });
     return;
   }
@@ -96,15 +95,14 @@ export const exchangeGmailCode = functions.https.onRequest(async (req, res) => {
       );
     res.json({ success: true });
   } catch (err) {
-    functions.logger.error('Error exchanging Gmail code', { err });
+    logger.error('Error exchanging Gmail code', { err });
     res.status(500).json({ success: false, error: 'Failed to exchange code' });
   }
 });
 
-export const importTravelEmails = functions
-  .runWith({ secrets: ['GEMINI_API_KEY'] })
-  .pubsub.schedule('every 24 hours')
-  .onRun(async () => {
+export const importTravelEmails = onSchedule(
+  { schedule: 'every 24 hours', secrets: [GEMINI_API_KEY] },
+  async () => {
     const usersSnap = await admin.firestore().collection('users').get();
     const runAt = Date.now();
 
@@ -122,7 +120,7 @@ export const importTravelEmails = functions
       try {
         const tokenData = (await tokenRef.get()).data() as { lastSync?: number; refreshToken?: string } | undefined;
         if (!tokenData || !tokenData.refreshToken) {
-          functions.logger.info('No Gmail tokens for user', { userId });
+          logger.info('No Gmail tokens for user', { userId });
           return;
         }
 
@@ -174,7 +172,7 @@ export const importTravelEmails = functions
             apiCalls++;
             const body = getMessageText(full.data);
             if (!body) {
-              functions.logger.info('Skipping message with empty body', { userId, messageId: m.id });
+              logger.info('Skipping message with empty body', { userId, messageId: m.id });
               skipped++;
               continue;
             }
@@ -187,7 +185,7 @@ export const importTravelEmails = functions
             try {
               parsed = JSON.parse(text);
             } catch (e) {
-              functions.logger.warn('Invalid JSON from AI', { userId, messageId: m.id, text });
+              logger.warn('Invalid JSON from AI', { userId, messageId: m.id, text });
               hasErrors = true;
               skipped++;
               continue;
@@ -201,7 +199,7 @@ export const importTravelEmails = functions
               typeof parsed.Arrival?.time !== 'string' ||
               typeof parsed.Arrival?.tz !== 'string'
             ) {
-              functions.logger.warn('Skipping message due to invalid or incomplete data from AI', {
+              logger.warn('Skipping message due to invalid or incomplete data from AI', {
                 userId,
                 messageId: m.id,
                 text,
@@ -239,18 +237,18 @@ export const importTravelEmails = functions
                 updatedAt: new Date().toISOString(),
               });
               processed++;
-              functions.logger.info('Imported travel event', { userId, occurredAt: event.occurredAt });
+              logger.info('Imported travel event', { userId, occurredAt: event.occurredAt });
             } else {
               skipped++;
-              functions.logger.info('Duplicate event skipped', { userId, occurredAt: event.occurredAt });
+              logger.info('Duplicate event skipped', { userId, occurredAt: event.occurredAt });
             }
           } catch (err) {
             hasErrors = true;
-            functions.logger.error('Error processing message', { userId, messageId: m.id, err });
+            logger.error('Error processing message', { userId, messageId: m.id, err });
           }
         }
 
-        functions.logger.info('Gmail import summary', {
+        logger.info('Gmail import summary', {
           userId,
           total: allMessages.length,
           processed,
@@ -262,9 +260,10 @@ export const importTravelEmails = functions
           await tokenRef.set({ lastSync: runAt }, { merge: true });
         }
       } catch (err) {
-        functions.logger.error('Error processing user', { userId, err });
+        logger.error('Error processing user', { userId, err });
       }
     };
 
     await Promise.allSettled(usersSnap.docs.map(processUser));
-  });
+  },
+);
